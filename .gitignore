@@ -1,0 +1,8 @@
+# binaries
+/bin/
+*.exe
+# local env
+.env
+# editors
+.vscode/
+.idea/

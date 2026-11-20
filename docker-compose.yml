@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: mes
+      POSTGRES_PASSWORD: mes
+      POSTGRES_DB: mes
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+
+  # TODO(Day 3): add the api service (build from a Dockerfile)
+  # TODO(Day 4): add Kafka
+  # TODO(Day 5): add Prometheus and Grafana
+
+volumes:
+  pgdata:
