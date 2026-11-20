@@ -3,10 +3,10 @@
 One short entry per day, in English. Write it as if explaining to an interviewer.
 
 ## Day 1 — Go basics & skeleton
-- **What I built:**
-- **New concepts:** (e.g. goroutines, `context`, graceful shutdown, `net/http` routing)
-- **Compared to C# / Java:**
-- **Open questions:**
+- **What I built:** Project skeleton with a health check, PostgreSQL running in Docker with schema and sample data.
+- **New concepts:** structs and methods, maps, pointers, interfaces, goroutines and channels, graceful shutdown.
+- **Compared to C# / Java:** Errors are return values, not exceptions. Interfaces are satisfied implicitly — no `implements`. Structs are copied by default; use a pointer to change the original.
+- **Key insight:** Validate synchronously, send the "allow" signal first, and hand off recording to a background worker. Records may be delayed but must not be lost — that is why I will use Kafka on Day 4.
 
 ## Day 2 — REST API & scan validation
 - **What I built:**
