@@ -53,3 +53,18 @@ type ScanEvent struct {
 // Given the recipe of the lot's work order and a scanned material,
 // return ALLOW if the material code belongs to the recipe, otherwise BLOCK with a reason.
 // Write it as a pure function first so it is easy to unit-test (go test ./...).
+
+type Recipe struct {
+	ID            int64
+	Name          string
+	MaterialCodes []string
+}
+
+func ValidateScan(recipe Recipe, material Material) (ScanResult, string) {
+	for _, c := range recipe.MaterialCodes {
+		if c == material.Code {
+			return ScanAllow, ""
+		}
+	}
+	return ScanBlock, "material " + material.Code + " is not in recipe " + recipe.Name
+}
