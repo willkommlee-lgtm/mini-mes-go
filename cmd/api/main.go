@@ -26,6 +26,8 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
+	mux.HandleFunc("POST /scans", handleScan)
+
 	// TODO(Day 2): connect to PostgreSQL (DATABASE_URL) and register:
 	//   POST /work-orders, GET /work-orders/{id}
 	//   POST /lots

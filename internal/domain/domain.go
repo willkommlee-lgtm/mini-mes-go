@@ -49,11 +49,7 @@ type ScanEvent struct {
 	ScannedAt time.Time  `json:"scanned_at"`
 }
 
-// TODO(Day 2): write ValidateScan — the core business rule.
-// Given the recipe of the lot's work order and a scanned material,
-// return ALLOW if the material code belongs to the recipe, otherwise BLOCK with a reason.
-// Write it as a pure function first so it is easy to unit-test (go test ./...).
-
+// Recipe lists the material codes a compound is allowed to contain.
 type Recipe struct {
 	ID            int64
 	Name          string
