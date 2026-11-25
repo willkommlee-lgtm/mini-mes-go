@@ -29,6 +29,7 @@ type scanResponse struct {
 type MaterialFinder interface {
 	FindMaterial(ctx context.Context, barcode string) (domain.Material, error)
 	FindRecipeForLot(ctx context.Context, lotID int64) (domain.Recipe, error)
+	SaveScan(ctx context.Context, e domain.ScanEvent) error
 }
 
 // scanHandler holds what the POST /scans handler needs.
@@ -74,6 +75,19 @@ func (h *scanHandler) handleScan(w http.ResponseWriter, r *http.Request) {
 	// 4. Validate against the recipe
 	result, reason := domain.ValidateScan(recipe, material)
 
-	// 5. Answer the PC
+	// 5. Record the decision before answering
+	event := domain.ScanEvent{
+		LotID:   req.LotID,
+		Barcode: req.Barcode,
+		Result:  result,
+		Reason:  reason,
+	}
+	if err := h.materials.SaveScan(r.Context(), event); err != nil {
+		h.logger.Error("save scan failed", "lot_id", req.LotID, "barcode", req.Barcode, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+
+	// 6. Answer the PC
 	writeJSON(w, http.StatusOK, scanResponse{Result: result, Reason: reason})
 }

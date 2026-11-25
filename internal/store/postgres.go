@@ -75,3 +75,12 @@ func (p *Postgres) FindRecipeForLot(ctx context.Context, lotID int64) (domain.Re
 	}
 	return recipe, nil
 }
+
+// SaveScan records a scan and the decision that was made.
+func (p *Postgres) SaveScan(ctx context.Context, e domain.ScanEvent) error {
+	_, err := p.db.Exec(ctx,
+		"INSERT INTO scan_events (lot_id, barcode, result, reason) VALUES ($1, $2, $3, $4)",
+		e.LotID, e.Barcode, string(e.Result), e.Reason,
+	)
+	return err
+}
