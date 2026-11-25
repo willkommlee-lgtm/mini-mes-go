@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -27,18 +28,13 @@ type scanResponse struct {
 // The real one reads PostgreSQL; a test can use a fake one.
 type MaterialFinder interface {
 	FindMaterial(ctx context.Context, barcode string) (domain.Material, error)
+	FindRecipeForLot(ctx context.Context, lotID int64) (domain.Recipe, error)
 }
 
 // scanHandler holds what the POST /scans handler needs.
 type scanHandler struct {
 	materials MaterialFinder
 	logger    *slog.Logger
-}
-
-// Temporary recipe. Moved to PostgreSQL in step 3-3.
-var compoundA = domain.Recipe{
-	Name:          "Compound-A",
-	MaterialCodes: []string{"NR-01", "CB-02", "OIL-03"},
 }
 
 // handleScan handles POST /scans.
@@ -62,12 +58,22 @@ func (h *scanHandler) handleScan(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 		return
 	}
-	// - err가 store.ErrNotFound면: 404 "unknown barcode: ..." 응답하고 return
-	// - 그 밖의 err면: h.logger.Error로 기록하고, 500 "internal error" 응답하고 return
 
-	// 3. Validate against the recipe
-	result, reason := domain.ValidateScan(compoundA, material)
+	// 3. Find the recipe of the lot
+	recipe, err := h.materials.FindRecipeForLot(r.Context(), req.LotID)
+	if errors.Is(err, store.ErrNotFound) {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": fmt.Sprintf("unknown lot: %d", req.LotID)})
+		return
+	}
+	if err != nil {
+		h.logger.Error("find recipe failed", "lot_id", req.LotID, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
 
-	// 4. Answer the PC
+	// 4. Validate against the recipe
+	result, reason := domain.ValidateScan(recipe, material)
+
+	// 5. Answer the PC
 	writeJSON(w, http.StatusOK, scanResponse{Result: result, Reason: reason})
 }

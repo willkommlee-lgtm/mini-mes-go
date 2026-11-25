@@ -40,3 +40,38 @@ func (p *Postgres) FindMaterial(ctx context.Context, barcode string) (domain.Mat
 	}
 	return m, nil
 }
+
+// FindRecipeForLot returns the recipe of the work order that a lot belongs to.
+func (p *Postgres) FindRecipeForLot(ctx context.Context, lotID int64) (domain.Recipe, error) {
+	rows, err := p.db.Query(ctx, `
+		SELECT r.id, r.name, rm.material_code
+		FROM lots l
+		JOIN work_orders wo      ON wo.id = l.work_order_id
+		JOIN recipes r           ON r.id = wo.recipe_id
+		JOIN recipe_materials rm ON rm.recipe_id = r.id
+		WHERE l.id = $1`,
+		lotID,
+	)
+	if err != nil {
+		return domain.Recipe{}, err
+	}
+	defer rows.Close()
+
+	var recipe domain.Recipe
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&recipe.ID, &recipe.Name, &code); err != nil {
+			return domain.Recipe{}, err
+		}
+
+		recipe.MaterialCodes = append(recipe.MaterialCodes, code)
+	}
+	if err := rows.Err(); err != nil {
+		return domain.Recipe{}, err
+	}
+
+	if len(recipe.MaterialCodes) == 0 {
+		return domain.Recipe{}, ErrNotFound
+	}
+	return recipe, nil
+}
