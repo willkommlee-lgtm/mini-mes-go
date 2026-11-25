@@ -6,3 +6,5 @@
 # editors
 .vscode/
 .idea/
+# personal Claude Code context (not for GitHub)
+CLAUDE.local.md

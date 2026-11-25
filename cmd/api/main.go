@@ -14,12 +14,29 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil)) // structured JSON logs (useful again on Day 5)
 
 	addr := getenv("HTTP_ADDR", ":8080")
+
+	// Connect to PostgreSQL
+	dbURL := getenv("DATABASE_URL", "postgres://mes:mes@localhost:5432/mes")
+	db, err := pgxpool.New(context.Background(), dbURL)
+	if err != nil {
+		logger.Error("invalid database config", "err", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	if err := db.Ping(context.Background()); err != nil {
+		logger.Error("database not reachable", "err", err)
+		os.Exit(1)
+	}
+	logger.Info("database connected")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
