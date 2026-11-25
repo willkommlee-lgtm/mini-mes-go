@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/willkommlee-lgtm/mini-mes-go/internal/domain"
+	"github.com/willkommlee-lgtm/mini-mes-go/internal/store"
 )
 
 // scanRequest is what a shop-floor PC sends after scanning a material.
@@ -19,21 +23,26 @@ type scanResponse struct {
 	Reason string            `json:"reason,omitempty"`
 }
 
-// Temporary in-memory data. Replaced by PostgreSQL in the next step.
-var materials = map[string]domain.Material{
-	"MAT-0001": {Barcode: "MAT-0001", Code: "NR-01", Name: "Natural rubber"},
-	"MAT-0002": {Barcode: "MAT-0002", Code: "CB-02", Name: "Carbon black"},
-	"MAT-0003": {Barcode: "MAT-0003", Code: "OIL-03", Name: "Process oil"},
-	"MAT-9999": {Barcode: "MAT-9999", Code: "SI-09", Name: "Silica"},
+// MaterialFinder finds a material by barcode.
+// The real one reads PostgreSQL; a test can use a fake one.
+type MaterialFinder interface {
+	FindMaterial(ctx context.Context, barcode string) (domain.Material, error)
 }
 
+// scanHandler holds what the POST /scans handler needs.
+type scanHandler struct {
+	materials MaterialFinder
+	logger    *slog.Logger
+}
+
+// Temporary recipe. Moved to PostgreSQL in step 3-3.
 var compoundA = domain.Recipe{
 	Name:          "Compound-A",
 	MaterialCodes: []string{"NR-01", "CB-02", "OIL-03"},
 }
 
 // handleScan handles POST /scans.
-func handleScan(w http.ResponseWriter, r *http.Request) {
+func (h *scanHandler) handleScan(w http.ResponseWriter, r *http.Request) {
 	// 1. Read the JSON body into req
 	var req scanRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -41,19 +50,23 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Find the material by barcode
-	material, ok := materials[req.Barcode]
-	if !ok {
+	// 2. Find the material by barcode (now from PostgreSQL)
+	material, err := h.materials.FindMaterial(r.Context(), req.Barcode)
+
+	if errors.Is(err, store.ErrNotFound) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown barcode: " + req.Barcode})
 		return
 	}
-	// - materials 맵에서 req.Barcode로 찾기 (4강의 value, ok 패턴)
-	// - 없으면: writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown barcode: " + req.Barcode})
-	//          그리고 return
+	if err != nil {
+		h.logger.Error("find material failed", "barcode", req.Barcode, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	// - err가 store.ErrNotFound면: 404 "unknown barcode: ..." 응답하고 return
+	// - 그 밖의 err면: h.logger.Error로 기록하고, 500 "internal error" 응답하고 return
 
 	// 3. Validate against the recipe
 	result, reason := domain.ValidateScan(compoundA, material)
-	// - domain.ValidateScan을 compoundA와 찾은 material로 호출해서 result, reason 받기
 
 	// 4. Answer the PC
 	writeJSON(w, http.StatusOK, scanResponse{Result: result, Reason: reason})

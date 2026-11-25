@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/willkommlee-lgtm/mini-mes-go/internal/store"
 )
 
 func main() {
@@ -43,7 +45,8 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	mux.HandleFunc("POST /scans", handleScan)
+	scans := &scanHandler{materials: store.NewPostgres(db), logger: logger}
+	mux.HandleFunc("POST /scans", scans.handleScan)
 
 	// TODO(Day 2): connect to PostgreSQL (DATABASE_URL) and register:
 	//   POST /work-orders, GET /work-orders/{id}
