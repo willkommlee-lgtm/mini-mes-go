@@ -84,3 +84,28 @@ func (p *Postgres) SaveScan(ctx context.Context, e domain.ScanEvent) error {
 	)
 	return err
 }
+
+// LotGenealogy lists the materials that were allowed into a lot, oldest first.
+func (p *Postgres) LotGenealogy(ctx context.Context, lotID int64) ([]domain.GenealogyEntry, error) {
+	rows, err := p.db.Query(ctx, `
+		SELECT s.barcode, m.code, m.name, s.scanned_at
+		FROM scan_events s
+		JOIN materials m ON s.barcode = m.barcode
+		WHERE s.lot_id = $1 AND s.result = 'ALLOW'
+		ORDER BY s.scanned_at
+	`, lotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	entries := []domain.GenealogyEntry{}
+	for rows.Next() {
+		var e domain.GenealogyEntry
+		if err := rows.Scan(&e.Barcode, &e.MaterialCode, &e.MaterialName, &e.ScannedAt); err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
+}

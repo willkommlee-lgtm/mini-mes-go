@@ -64,3 +64,11 @@ func ValidateScan(recipe Recipe, material Material) (ScanResult, string) {
 	}
 	return ScanBlock, "material " + material.Code + " is not in recipe " + recipe.Name
 }
+
+// GenealogyEntry is one material that went into a lot.
+type GenealogyEntry struct {
+	Barcode      string    `json:"barcode"`
+	MaterialCode string    `json:"material_code"`
+	MaterialName string    `json:"material_name"`
+	ScannedAt    time.Time `json:"scanned_at"`
+}

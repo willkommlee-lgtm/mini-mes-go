@@ -48,6 +48,9 @@ func main() {
 	scans := &scanHandler{materials: store.NewPostgres(db), logger: logger}
 	mux.HandleFunc("POST /scans", scans.handleScan)
 
+	lots := &lotHandler{genealogy: store.NewPostgres(db), logger: logger}
+	mux.HandleFunc("GET /lots/{id}/genealogy", lots.handleGenealogy)
+
 	// TODO(Day 2): connect to PostgreSQL (DATABASE_URL) and register:
 	//   POST /work-orders, GET /work-orders/{id}
 	//   POST /lots
